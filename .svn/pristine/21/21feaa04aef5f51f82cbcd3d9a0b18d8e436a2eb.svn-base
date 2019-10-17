@@ -1,0 +1,16 @@
+package com.tuoming.lteanalysis.GridMatrix.output;
+
+import com.tuoming.lteanalysis.GridMatrix.beans.IssueGridResult;
+
+public class IssueGridFileExporter extends FileExporter {
+	
+	public IssueGridFileExporter(String date) {
+		super.filename = "web_issueana_grid_" + date + ".txt"; 
+	}
+	
+	protected String format(Object data) {
+		IssueGridResult r = (IssueGridResult)data;
+		return r.toString() + "\n";
+	}
+
+}

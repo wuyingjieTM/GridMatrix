@@ -1,0 +1,18 @@
+package com.tuoming.lteanalysis.GridMatrix.output;
+
+import com.tuoming.lteanalysis.GridMatrix.beans.IssueGridSuggest;
+
+public class IssueGridSuggestFileExporter extends FileExporter {
+
+	public IssueGridSuggestFileExporter(String date) {
+		super.filename = "web_issueana_grid_suggest_"  + date + ".csv";
+	}
+	
+	@Override
+	protected String format(Object data) {
+		// TODO Auto-generated method stub
+		IssueGridSuggest r = (IssueGridSuggest)data;
+		return r.toString() + "\n";
+	}
+
+}

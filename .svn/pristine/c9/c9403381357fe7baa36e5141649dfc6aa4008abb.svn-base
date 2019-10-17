@@ -1,0 +1,6 @@
+package com.tuoming.lteanalysis.GridMatrix.beans;
+
+public class CheckParaList {
+	public long	eci;
+	public String	is_identical;
+}

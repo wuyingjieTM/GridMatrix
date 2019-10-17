@@ -1,0 +1,48 @@
+package com.tuoming.lteanalysis.GridMatrix.input;
+
+import java.util.List;
+import java.util.Map;
+
+import com.tuoming.lteanalysis.GridMatrix.beans.AlarmCount;
+import com.tuoming.lteanalysis.GridMatrix.beans.AlarmList;
+import com.tuoming.lteanalysis.GridMatrix.beans.GridInfo;
+import com.tuoming.lteanalysis.GridMatrix.beans.CellInfo;
+import com.tuoming.lteanalysis.GridMatrix.beans.CellNeighbor;
+import com.tuoming.lteanalysis.GridMatrix.beans.CheckParaList;
+import com.tuoming.lteanalysis.GridMatrix.beans.CoverStep;
+import com.tuoming.lteanalysis.GridMatrix.beans.CoverWeak;
+import com.tuoming.lteanalysis.GridMatrix.beans.EngineerData;
+import com.tuoming.lteanalysis.GridMatrix.beans.Grid2mgrs;
+import com.tuoming.lteanalysis.GridMatrix.beans.GridBase;
+import com.tuoming.lteanalysis.GridMatrix.beans.GridLineList;
+import com.tuoming.lteanalysis.GridMatrix.beans.GridOverList;
+import com.tuoming.lteanalysis.GridMatrix.beans.Matrix;
+import com.tuoming.lteanalysis.GridMatrix.beans.MissNeighbor;
+import com.tuoming.lteanalysis.GridMatrix.beans.MrsAoaCover;
+import com.tuoming.lteanalysis.GridMatrix.beans.MrsStatAoa;
+import com.tuoming.lteanalysis.GridMatrix.beans.MrsStatRsrp;
+import com.tuoming.lteanalysis.GridMatrix.beans.SimulCover;
+
+public interface IDataSource {
+	Map<String,GridInfo> LoadGrid();
+	Map<String,GridInfo> LoadBeforeGrid();
+	Map<String,Map<Long,GridBase>> LoadGridBase(String date);
+	Map<Long,GridLineList> LoadGridLineList(String date);
+	Map<String,GridOverList> LoadGridOverList(String date);
+	Map<Long,CellNeighbor> LoadCellneighbor(String date);
+	Map<Long,CellInfo> LoadCell(String date);
+	Map<Long,AlarmCount> LoadAlarmCount(String date);
+	Map<Long,List<CoverStep>> LoadCoverStep(String date);
+	Map<Long,CoverWeak> LoadCoverWeak(String date);
+	Map<String,Matrix> LoadMatrix();
+	Map<Long,MrsStatRsrp> LoadMrsStatRsrp(String date);
+	Map<Long,EngineerData> LoadEngineerData(String date);
+	Map<Long,List<AlarmList>> LoadAlarmList(String date);
+	Map<Long,List<MissNeighbor>> LoadMissNeighbor(String date);
+	Map<String,Grid2mgrs> LoadGrid2Mgrs();
+	Map<Long,CheckParaList> LoadCheckParaList(String date);
+	Map<Long,MrsAoaCover> LoadMrsAoaCover(String date);
+	Map<Long,MrsStatAoa> LoadMrsStatAoa(String date);
+	Map<String,SimulCover> LoadSimulCover(String date);
+	
+}

@@ -1,0 +1,18 @@
+package com.tuoming.lteanalysis.GridMatrix.beans;
+
+public class GridIssueanaOverdistance {
+	public String DATE;
+	public String CITY;
+	public long GRID_ID;
+	public long ECI;
+	public String CELL_NAME;
+	public float SITE_DISTANCE;
+	public String OVERDISTANCE;
+	@Override
+	public String toString() {
+		return DATE + "," + CITY + "," + GRID_ID + "," + ECI + "," + CELL_NAME + "," + SITE_DISTANCE + ","
+				+ OVERDISTANCE;
+	}
+
+
+}

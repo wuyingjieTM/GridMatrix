@@ -1,0 +1,20 @@
+package com.tuoming.lteanalysis.GridMatrix.beans;
+
+public class GridIssueanaOvercover {
+	public String DATE;
+	public String CITY;
+	public long GRID_ID;
+	public long ECI;
+	public String CELL_NAME;
+	public float S_DIR;
+	public float D_DIR;
+	public String OVERCOVER;
+	
+	@Override
+	public String toString() {
+		return DATE + "," + CITY + "," + GRID_ID + "," + ECI + "," + CELL_NAME + "," + S_DIR + "," + D_DIR + ","
+				+ OVERCOVER;
+	}
+	
+	
+}

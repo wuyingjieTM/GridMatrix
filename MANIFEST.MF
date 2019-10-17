@@ -1,0 +1,9 @@
+Manifest-Version: 1.0
+Class-Path: .
+Main-Class: com.tuoming.lteanalysis.GridMatrix.main.Main
+
+Name: org.apache.log4j
+Implementation-Title: log4j
+Implementation-Version: 1.2.17
+DynamicImport-Package: *
+Implementation-Vendor: "Apache Software Foundation"

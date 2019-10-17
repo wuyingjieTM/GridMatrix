@@ -1,0 +1,769 @@
+package com.tuoming.lteanalysis.GridMatrix.process;
+
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+
+import org.apache.log4j.Logger;
+
+import com.tuoming.lteanalysis.GridMatrix.beans.AlarmCount;
+import com.tuoming.lteanalysis.GridMatrix.beans.AlarmList;
+import com.tuoming.lteanalysis.GridMatrix.beans.CellInfo;
+import com.tuoming.lteanalysis.GridMatrix.beans.CellNeighbor;
+import com.tuoming.lteanalysis.GridMatrix.beans.CheckParaList;
+import com.tuoming.lteanalysis.GridMatrix.beans.CoverStep;
+import com.tuoming.lteanalysis.GridMatrix.beans.CoverWeak;
+import com.tuoming.lteanalysis.GridMatrix.beans.EngineerData;
+import com.tuoming.lteanalysis.GridMatrix.beans.Grid2mgrs;
+import com.tuoming.lteanalysis.GridMatrix.beans.GridBase;
+import com.tuoming.lteanalysis.GridMatrix.beans.GridInfo;
+import com.tuoming.lteanalysis.GridMatrix.beans.GridLineList;
+import com.tuoming.lteanalysis.GridMatrix.beans.GridOverList;
+import com.tuoming.lteanalysis.GridMatrix.beans.GridResult;
+import com.tuoming.lteanalysis.GridMatrix.beans.IssueGridResult;
+import com.tuoming.lteanalysis.GridMatrix.beans.IssueGridSuggest;
+import com.tuoming.lteanalysis.GridMatrix.beans.Matrix;
+import com.tuoming.lteanalysis.GridMatrix.beans.MissNeighbor;
+import com.tuoming.lteanalysis.GridMatrix.beans.MrsAoaCover;
+import com.tuoming.lteanalysis.GridMatrix.beans.MrsStatAoa;
+import com.tuoming.lteanalysis.GridMatrix.beans.MrsStatRsrp;
+import com.tuoming.lteanalysis.GridMatrix.config.configer;
+import com.tuoming.lteanalysis.GridMatrix.input.DbDataSource;
+import com.tuoming.lteanalysis.GridMatrix.input.FileDataSource;
+import com.tuoming.lteanalysis.GridMatrix.input.IDataSource;
+import com.tuoming.lteanalysis.GridMatrix.output.GridResultFileExporter;
+import com.tuoming.lteanalysis.GridMatrix.output.IExporter;
+import com.tuoming.lteanalysis.GridMatrix.output.IssueGridFileExporter;
+import com.tuoming.lteanalysis.GridMatrix.output.IssueGridSuggestFileExporter;
+
+public class GridMatrixProcess {
+	private static Logger logger = Logger.getLogger(GridMatrixProcess.class);
+	private String date = "";
+	configer config = null;
+
+	IDataSource ds = null;
+
+	IExporter gridResultExporter = null;
+	IExporter issueGridExporter = null;
+	IExporter issueGridSuggestExporter = null;
+
+	Map<String, GridResult> gridResultMap = new HashMap<String, GridResult>();
+
+	Map<String, Matrix> matrixMap = null;
+	Map<Long, GridLineList> gridLineMap = null;
+	Map<String, GridOverList> gridOverMap = null;
+	Map<Long, CellNeighbor> cellNeighborMap = null;
+	Map<Long, CellInfo> cellMap = null;
+	Map<Long, AlarmCount> alarmCountMap = null;
+	Map<Long, List<AlarmList>> alarmListMap = null;
+	Map<Long, CoverStep> coverStepMap = null;
+	Map<Long, CoverWeak> coverWeakMap = null;
+	Map<Long, MrsStatRsrp> mrsrsrpMap = null;
+	Map<Long, EngineerData> engdataMap = null;
+	Map<Long, List<MissNeighbor>> missNeighborMap = null;
+	Map<String, GridInfo> gridMap = null;
+	Map<String, Map<Long,GridBase>> gridBaseMap = null;
+	Map<Long,GridBase> gridBaseEciMap = new HashMap<Long,GridBase>();
+	Map<String, Grid2mgrs> grid2mgrsMap = null;
+	Map<Long, CheckParaList> checkParaListMap = null;
+	Map<Long,MrsAoaCover> mrsAoaCoverMap = null;
+	Map<Long,MrsStatAoa> mrsStatAoaMap = null;
+	public GridMatrixProcess(configer config, String exportPath, String date) {
+		this.config = config;
+		this.date = date;
+	}
+
+	public int init() {
+		String dataSourceType = config.GetDataSourceType();
+		if (dataSourceType.equals("1") && config.GetDbInfo() != -1) {
+			ds = new DbDataSource(config);
+		} else if (dataSourceType.equals("2")) {
+			ds = new FileDataSource(config);
+		} else {
+			logger.error("GridMatrixProcess init error");
+			return -1;
+		}
+
+		gridResultExporter = new GridResultFileExporter(date);
+		if (gridResultExporter.init(config) != 0) {
+			return -1;
+		}
+		issueGridExporter = new IssueGridFileExporter(date);
+		if (issueGridExporter.init(config) != 0) {
+			return -1;
+		}
+
+		issueGridSuggestExporter = new IssueGridSuggestFileExporter(date);
+		if (issueGridSuggestExporter.init(config) != 0) {
+			return -1;
+		}
+		logger.info("GridMatrixProcess init success");
+		return 0;
+	}
+
+	private int loaddata() {
+		
+		String fdate = date.substring(0, 4) + "-" + date.substring(4, 6) + "-" + date.substring(6, 8);
+		// load data
+		gridMap = ds.LoadGrid(fdate);
+		if (gridMap.size() == 0) {
+			logger.error("no valid grid data!!!");
+			return -1;
+		}
+		matrixMap = ds.LoadMatrix();
+		gridLineMap = ds.LoadGridLineList(fdate);
+		gridOverMap = ds.LoadGridOverList(fdate);
+		cellNeighborMap = ds.LoadCellneighbor(fdate);
+		cellMap = ds.LoadCell(fdate);
+		checkParaListMap = ds.LoadCheckParaList(fdate);
+		alarmCountMap = ds.LoadAlarmCount(fdate);
+		alarmListMap = ds.LoadAlarmList(fdate);
+		coverStepMap = ds.LoadCoverStep(fdate);
+		coverWeakMap = ds.LoadCoverWeak(fdate);
+		mrsrsrpMap = ds.LoadMrsStatRsrp(fdate);
+		engdataMap = ds.LoadEngineerData(fdate);
+		missNeighborMap = ds.LoadMissNeighbor(fdate);//no test
+		gridBaseMap = ds.LoadGridBase(fdate);
+		grid2mgrsMap = ds.LoadGrid2Mgrs();
+		mrsStatAoaMap = ds.LoadMrsStatAoa(fdate);
+		mrsAoaCoverMap = ds.LoadMrsAoaCover(fdate);
+		for(Map<Long,GridBase> it : gridBaseMap.values()) {
+			gridBaseEciMap.putAll(it);
+		}
+		return 0;
+	}
+
+	public void process() {
+		logger.info("start processing...");
+		if (loaddata() != 0) {
+			return;
+		}
+		// 输出ana_grid_result
+		GridResultProcess();
+		// 输出web_issueana_grid
+		IssueGridProcess();
+		// 输出栅格分析各维度结论建议
+		ConclusionProcess();
+	}
+	
+	private void ConclusionProcess() {
+		long timevalue = 0;
+		for (GridResult g : gridResultMap.values()) {
+			long b = System.currentTimeMillis();
+			GridInfo gi = gridMap.get(g.CITY + "_" + g.GRID_ID);
+			GridOverList goList = gridOverMap.get(g.CITY + "_" + g.GRID_ID);
+			EngineerData ed1 = engdataMap.get(g.TOP1ECI);
+			EngineerData ed2 = engdataMap.get(g.TOP2ECI);
+			EngineerData ed3 = engdataMap.get(g.TOP3ECI);
+			GridLineList gll1 = gridLineMap.get(g.TOP1ECI);
+			GridLineList gll2 = gridLineMap.get(g.TOP2ECI);
+			GridLineList gll3 = gridLineMap.get(g.TOP3ECI);
+			
+			IssueGridSuggest igs = new IssueGridSuggest();
+			igs.DATE = g.DATE;
+			igs.PROVINCE = g.PROVINCE;
+			igs.CITY = g.CITY;
+			igs.GRID_ID = g.GRID_ID;
+			igs.ALARM = GetAlarmConclusion(g, goList);
+			igs.MISSNEIGH = GetMissConclusion(g, gi);
+			igs.ANTENNA = GetTKConclusion(g, gi);
+			igs.OVERCOVERTOP1 = GetOverCoverConclusion(g.TOP1ECI,1,gi,gll1,ed1);
+			igs.OVERCOVERTOP2 = GetOverCoverConclusion(g.TOP2ECI,2,gi,gll2,ed2);
+			igs.OVERCOVERTOP3 = GetOverCoverConclusion(g.TOP3ECI,3,gi,gll3,ed3);
+			igs.ANGLETOP1 = GetAOAConclusion(g.TOP1ECI,1,ed1);
+			igs.ANGLETOP1 = GetAOAConclusion(g.TOP2ECI,2,ed2);
+			igs.ANGLETOP1 = GetAOAConclusion(g.TOP3ECI,3,ed3);
+			igs.NOBESTCELL = GetNoBestCellConclusion();
+			igs.BACKBUILD = GetBackBuildConclusion(g, gi);
+			igs.OVERDISTANCE = GetOverDistanceConclusion(g, gi);
+			timevalue += System.currentTimeMillis() - b;
+			issueGridSuggestExporter.Export(igs);
+		}
+		logger.info("web_issueana_grid_suggest Process use " + String.format("%.3f", 1e-3 * timevalue) + " sec");
+		issueGridSuggestExporter.finish();
+	}
+	
+	//站间距过远分析结论
+	private String GetOverDistanceConclusion(GridResult g,GridInfo gi) {		
+		
+		String c = "该栅格未发现站间距过远问题\n";
+		/*条件三：
+		栅格内日均业务量大于200GB：已入库表ana_grid_result中字段TRAFFIC为1；*/
+		if(g.TRAFFIC != 1) return c;
+		//条件一：属于弱覆盖栅格：栅格覆盖率 < 0.8
+		Map<Long,GridBase> gbmap = gridBaseMap.get(g.CITY + "_" + g.GRID_ID);
+		if(gbmap == null) {
+			return c;
+		}
+		int sumpoor  = 0, sumcount = 0;
+		for(GridBase gb : gbmap.values()) {
+			sumpoor += gb.C_SUM_POOR;
+			sumcount += gb.C_SUM_COUNT;
+		}
+		if(sumcount == 0) return c;
+		float coverRate = 1 -  (float)sumpoor/sumcount;
+		if(coverRate >= 0.8) return c;
+		
+		/*条件二：距离最近站点的距离/周边站点的平均站间距 >  1.5 
+		   距离最近站点的距离：分析该栅格的弱覆盖TOP小区，计算该小区经纬度距离该栅格的距离，
+		   入库表 ana_grid_data中TOP1DIS、TOP2DIS、TOP3DIS、TOPECIDIS字段中取最小值；
+		   平均站间距：小区到所有邻区的距离平均值  入库表 web_engineerdata中site_distance字段*/
+		 float mindis = Math.min(gi.TOP1DIS, gi.TOP2DIS);
+		 mindis = Math.min(mindis, Math.min(gi.TOP3DIS,gi.TOPECIDIS));
+		 long targetEci = 0;
+		 if(mindis == gi.TOP1DIS) {
+			 targetEci = gi.TOP1ECI;
+		 }else if(mindis == gi.TOP2DIS) {
+			 targetEci = gi.TOP2ECI;
+		 }else if(mindis == gi.TOP3DIS) {
+			 targetEci = gi.TOP3ECI;
+		 }else{
+			 targetEci = gi.TOPECIALLNUMECI;
+		 }
+		 EngineerData ed = engdataMap.get(targetEci);
+		 if(ed == null || ed.site_distance == 0 
+				 || mindis/(ed.site_distance*1000) <= 1.5 ) return c;
+		 c = "该栅格覆盖率为" + coverRate + "，属于弱覆盖栅格；距离最近站点的距离为" + mindis + "米，大于周边站点的平均站间距1.5倍；"
+		 		+ "该栅格内日均业务量数据大于200GB；\n需派单到现场查勘，"
+		 		+ "如果现场反馈确实有需求（特殊地貌除外，如大水面、山区等），判断为站间距过远。建议在该区域加站；\n";
+		 return c;
+	}
+	
+	
+	//建筑物遮挡结论
+	private String GetBackBuildConclusion(GridResult g,GridInfo gi) {
+		String c = "该栅格未发现建筑物遮挡问题\n";
+		if (g.SIMUlCOVER != 0) {
+			return c;
+		}
+		HashSet<Long> eciList = new HashSet<Long>();
+		if (gi.TOP1ECI != 0) {
+			eciList.add(gi.TOP1ECI);
+		}
+		if (gi.TOP2ECI != 0) {
+			eciList.add(gi.TOP2ECI);
+		}
+		if (gi.TOP3ECI != 0) {
+			eciList.add(gi.TOP3ECI);
+		}
+		if (gi.TOPECIALLNUMECI != 0) {
+			eciList.add(gi.TOPECIALLNUMECI);
+		}
+		int count = 0, unweakCount = 0;
+		String cellnames = "";
+		for (long eci : eciList) {
+			GridBase gb = gridBaseEciMap.get(eci);
+			if (gb == null || gb.C_SUM_COUNT == 0) {
+				continue;
+			}
+			count++;
+			if ((float) gb.C_SUM_POOR / gb.C_SUM_COUNT > 0.1f) {
+				CheckParaList cpl = checkParaListMap.get(eci);
+				if (cpl != null && cpl.is_identical.equals("合规")) {
+					EngineerData ed = engdataMap.get(eci);
+					if (ed != null) {
+						cellnames += cellnames.length() == 0 ? ed.def_cellname : "、" + ed.def_cellname;
+					}else {
+						cellnames += cellnames.length() == 0 ? eci : "、" + eci;
+					}
+					unweakCount++;
+				}
+			}
+		}
+		if (count > 0 && (float) unweakCount / count < 0.6) {
+			c = "仿真数据在该区域没有出现弱覆盖，但小区" + cellnames 
+					+ "出现弱覆盖均分布在小区覆盖边缘，小区发射功率正常处于合理范围。需派单到现场查勘，"
+					+ "确定天线方位角与天线倾角合理，是否存在明显障碍物阻挡，如果存在明显障碍物阻挡，判断为建筑物阻挡。\n";
+		}
+		return c;
+	}
+	
+	//未占用最优小区
+	private String GetNoBestCellConclusion() {
+		
+		return "";
+	}
+	
+	//天线方向角分析结论
+	private String GetAOAConclusion(long eci, int flag,EngineerData ed) {
+		String c = "";
+		if(eci == 0 || ed == null) {
+			return c;
+		}
+//		MrsStatAoa msa = mrsStatAoaMap.get(eci);
+//		if(msa == null) return c;
+		MrsAoaCover mac = mrsAoaCoverMap.get(eci);
+		if(mac == null) return c;
+		float maxrate = 0;
+		int maxindex = 0;
+		for(int i = 0; i < 72; i++) {
+			maxrate = Math.max(maxrate, mac.aoa[i]);
+			if(mac.aoa[i] == maxrate) maxindex = i;
+		}
+		int maxDegree = maxindex*5;
+		float defaultDegree = ed.dir;
+		if(Math.abs(maxDegree - defaultDegree) > 10) {
+			//float maxPct = (float)maxnum/msa.reportnum;
+			c = "top" + flag + "天线方向角结论：\n" + 
+					"经AOA计算，小区" + ed.def_cellname  + "采样占比最高的角度为" + maxDegree + "度，采样点占比为" + mac.aoa[maxindex]*100 + "%；\n" 
+					+ "小区" + ed.def_cellname  + "平均eNB天线到达角为" + mac.avgaoa + "度，"
+					+ "采样点占比为" +mac.aoa[0]*100 + "%；\n"  
+					+ "原天线方向角" + (ed.dir == 0 ? "": ed.dir) + "度，跟AOA计算结果相差10度以上，"
+					+ "建议按" + ( mac.aoa[maxindex] > 0.5 ? maxDegree : mac.avgaoa) + "调整；\n";
+		}
+		return c;
+	}
+	
+	
+	
+	//小区越区覆盖分析结论
+	private String GetOverCoverConclusion(long eci, int flag,GridInfo g, GridLineList gll,EngineerData ed) {
+		String c = "";
+		if(eci == 0) {
+			return c;
+		}
+		//条件二：小区方向角正负60度范围内距离栅格中间位置，存在其他基站
+		if(gll == null || gll.TOPECILIST == null || gll.TOPECILIST.length() == 0 || ed == null) return c;
+		//条件一：小区距离栅格直线距离 > 周边基站平均距离
+		float sitdis = ed.site_distance*1000;
+		float linedis  = 0f;
+		if(flag == 1) {
+			linedis = g.TOP1DIS;
+		}else if(flag == 2) {
+			linedis = g.TOP2DIS;
+		}else if(flag == 3) {
+			linedis = g.TOP3DIS;
+		}
+		if(linedis <= sitdis) return c;
+		Set<String> sites = new HashSet<String>();
+		String otherecis[] =  gll.TOPECILIST.split(" ");
+		for(String streci : otherecis){
+			streci = streci.trim();
+			if(streci.length() == 0)
+				continue;
+			EngineerData oed = engdataMap.get(Long.parseLong(streci));
+			if(oed == null) continue;
+			sites.add(oed.def_sitename);
+		}
+		String strsites = "";
+		for(String sitename : sites) {
+			strsites += strsites.length() ==0 ? sitename : "、" + sitename;
+		}
+		c = "top" + flag + "小区越区覆盖分析结论：\n"
+				+ "小区" + ed.def_sitename + "距离栅格直线距离" + linedis 
+				+ "KM大于栅格周边基站平均距离"+ sitdis + "KM，"
+				+ "该小区方向角正负60度范围内距离栅格中间位置，存在其他基站 " + strsites +"；\n"
+				+ "小区"  + ed.def_sitename + "原天线下倾角"
+				+ ed.tilt + ed.etilt +"度，建议调整为" + String.format("%.4f", Math.atan(ed.height/ed.site_distance*1000) + 10/2) + "度。\n";
+		return c;			
+	}
+	
+	
+
+	
+	// 天馈结论
+	private String GetTKConclusion(GridResult g,GridInfo gi) {
+		String c = "该栅格未发现天馈问题";
+		if (g.SIMUlCOVER != 0) {
+			return c + "\n";
+		}
+		HashSet<Long> eciList = new HashSet<Long>();
+		if (gi.TOP1ECI != 0) {
+			eciList.add(gi.TOP1ECI);
+		}
+		if (gi.TOP2ECI != 0) {
+			eciList.add(gi.TOP2ECI);
+		}
+		if (gi.TOP3ECI != 0) {
+			eciList.add(gi.TOP3ECI);
+		}
+		if (gi.TOPECIALLNUMECI != 0) {
+			eciList.add(gi.TOPECIALLNUMECI);
+		}
+		int count = 0, unweakCount = 0;
+		String cellnames = "";
+		for (long eci : eciList) {
+			GridBase gb = gridBaseEciMap.get(eci);
+			if (gb == null || gb.C_SUM_COUNT == 0) {
+				continue;
+			}
+			count++;
+			if ((float) gb.C_SUM_POOR / gb.C_SUM_COUNT > 0.1f) {
+				CheckParaList cpl = checkParaListMap.get(eci);
+				if (cpl != null && cpl.is_identical.equals("合规")) {
+					EngineerData ed = engdataMap.get(eci);
+					if (ed != null) {
+						cellnames += cellnames.length() == 0 ? ed.def_cellname : "、" + ed.def_cellname;
+					}else {
+						cellnames += cellnames.length() == 0 ? eci : "、" + eci;
+					}
+					unweakCount++;
+				}
+			}
+		}
+		if (count > 0 && (float) unweakCount / count < 0.6) {
+			c = "仿真数据在该区域没有出现弱覆盖，但小区 " + cellnames + "出现弱覆盖均分布在小区覆盖边缘，小区发射功率正常处于合理范围。"
+					+ "需派单到现场查勘，确定天线方位角与天线倾角合理，是否存在明显障碍物阻挡，" + "如果没有明显障碍物阻挡，判断为天馈老化。";
+		}
+		return c + "\n";
+	}
+
+	// 邻区漏配结论
+	private String GetMissConclusion(GridResult g, GridInfo gi) {
+		/*
+		 * 1、 漏配邻区列初始表：浪潮提供的漏配邻区列表（ l_l_nbr_miss，每月提供一次，此表暂未入库），
+		 * 此表中有源小区与漏配小区的ECI和名称（S_CELL_ID ，S_CELL_NAME ，D_CELL_ID，D_CELL_NAME），
+		 * 用漏配邻区列表中源小区ECI（S_CELL_ID）跟栅格TOP小区
+		 * （共4个，库表ana_grid_data中字段：TOP1ECI，TOP2ECI，TOP3ECI，TOPECIALLNUMECI）相匹配，
+		 * 得出本栅格的漏配邻区初始表： 2、漏配邻区初始表中数据是否合理判断： 条件一：本栅格内，漏配小区在栅格中采样点数占源小区在栅格中采样点数50%以上（
+		 * （漏配小区在栅格中采样点数/源小区在栅格中采样点数）> 50 %）； 条件二：本栅格内，该漏配小区的小区覆盖率 > 90% （漏配小区覆盖率:
+		 * 该字段通过DATE（日期）、CITY（地市）、GRID_ID（栅格ID）、CELL_ID（漏配小区ECI）字段，
+		 * 在web_grid_base表中匹配出对应的 (1-C_SUM_POOR/C_SUM_COUNT) ）；
+		 */
+		String c = "";
+		HashSet<Long> eciList = new HashSet<Long>();
+		if (gi.TOP1ECI != 0) {
+			eciList.add(gi.TOP1ECI);
+		}
+		if (gi.TOP2ECI != 0) {
+			eciList.add(gi.TOP2ECI);
+		}
+		if (gi.TOP3ECI != 0) {
+			eciList.add(gi.TOP3ECI);
+		}
+		if (gi.TOPECIALLNUMECI != 0) {
+			eciList.add(gi.TOPECIALLNUMECI);
+		}
+		for (long srceci : eciList) {
+			GridBase gbsrc = gridBaseEciMap.get(srceci);
+			if (gbsrc == null || gbsrc.C_SUM_COUNT == 0) {
+				continue;
+			}
+			List<MissNeighbor> mlist = missNeighborMap.get(srceci);
+			if (mlist == null) {
+				continue;
+			}
+			boolean flag = false;
+			for (MissNeighbor mn : mlist) {
+				GridBase gbmiss = gridBaseEciMap.get(mn.D_CELL_ID);
+				if (gbmiss == null || gbmiss.C_SUM_COUNT == 0) {
+					continue;
+				}
+				// 条件1
+				float rate = (float) gbmiss.C_SUM_COUNT / gbsrc.C_SUM_COUNT;
+				if (rate <= 0.5)
+					continue;
+				// 条件2
+				float rate1 = (float) gbmiss.C_SUM_POOR / gbmiss.C_SUM_COUNT;
+				if (rate1 <= 0.9)
+					continue;
+				flag = true;
+			}
+			if (flag == true) {
+				c += c.length() == 0 ? "从小区栅格覆盖情况来看" + mlist.get(0).S_CELL_NAME : "、" + mlist.get(0).S_CELL_NAME;
+			}
+		}
+		return c.length() > 0 ? c + "有邻区漏配问题，建议添加漏配邻区。\n" : "该栅格不存在邻区漏配问题\n";
+	}
+	//告警结论
+	private String GetAlarmConclusion(GridResult g,GridOverList goList) {
+		// 判断该栅格覆盖数据与历史存在较大偏差
+
+		String c = "该栅格不存在告警问题。";
+		boolean flag = false;
+		if (g.HISMRDEV == 1) {
+			c = "该栅格覆盖数据与历史存在较大偏差";
+			flag = true;
+		}
+		if (goList != null) {
+			int eciCount = 0;
+			int alarmCount = 0;
+			int liveAlarmCount = 0;
+			HashSet<Long> eciList = new HashSet<Long>();
+			eciList.addAll(GetEciList(goList.F_BANDLIST));
+			eciList.addAll(GetEciList(goList.D_BANDLIST));
+			eciList.addAll(GetEciList(goList.FDD_BANDLIST));
+			for (long eci : eciList) {
+				List<AlarmList> alList = alarmListMap.get(eci);
+				if (alList == null) {
+					continue;
+				}
+				eciCount++;
+				for (AlarmList al : alList) {
+					alarmCount++;
+					if (al.CLRINSERT_TIME == null || al.CLRINSERT_TIME.length() == 0) {
+						liveAlarmCount++;
+					}
+				}
+			}
+			if (eciCount > 0) {
+				c += flag == true ? "且" : "该栅格";
+				c += String.format("周边覆盖站点或小区存在影响业务类告警，其中%d个小区共产生告警量%d条，目前已恢复%d条，需处理%d条。", eciCount, alarmCount,
+						alarmCount - liveAlarmCount, liveAlarmCount);
+			}
+		}
+		return c + "\n";
+	}
+
+	private List<Long> GetEciList(String ecis) {
+		if (ecis == null || ecis.length() == 0)
+			return new ArrayList<Long>();
+		List<Long> list = new ArrayList<Long>();
+		String[] f_ecis = ecis.split(" ");
+		if (f_ecis.length > 0) {
+			for (String seci : f_ecis) {
+				seci = seci.trim();
+				if (seci.length() == 0)
+					continue;
+				list.add(Long.parseLong(seci));
+			}
+
+		}
+		return list;
+	}
+
+	private void IssueGridProcess() {
+		long timevalue = 0;
+		for (GridResult g : gridResultMap.values()) {
+			long b = System.currentTimeMillis();
+			IssueGridResult result = new IssueGridResult();
+			result.DATE = g.DATE;
+			result.PROVINCE = g.PROVINCE;
+			result.CITY = g.CITY;
+			result.GRID_ID = g.GRID_ID;
+			result.TOP1ECI = g.TOP1ECI;
+			result.TOP2ECI = g.TOP2ECI;
+			result.TOP3ECI = g.TOP3ECI;
+			// 获取一条GridResult 的矩阵汇总结果
+			List<IssueGridResult> oneIssuetempList = new ArrayList<IssueGridResult>();
+			oneIssuetempList.add(SetOneItems(g.TOP1CELLRATE, matrixMap.get("TOP1CELLRATE")));
+			oneIssuetempList.add(SetOneItems(g.TOP1COVERRATE, matrixMap.get("TOP1COVERRATE")));
+			oneIssuetempList.add(SetOneItems(g.TOP1DIRDIFFAOA, matrixMap.get("TOP1DIRDIFFAOA")));
+			oneIssuetempList.add(SetOneItems(g.TOP1DISOVERAVGSITE, matrixMap.get("TOP1DISOVERAVGSITE")));
+			oneIssuetempList.add(SetOneItems(g.TOP2CELLRATE, matrixMap.get("TOP2CELLRATE")));
+			oneIssuetempList.add(SetOneItems(g.TOP2COVERRATE, matrixMap.get("TOP2COVERRATE")));
+			oneIssuetempList.add(SetOneItems(g.TOP2DIRDIFFAOA, matrixMap.get("TOP2DIRDIFFAOA")));
+			oneIssuetempList.add(SetOneItems(g.TOP2DISOVERAVGSITE, matrixMap.get("TOP2DISOVERAVGSITE")));
+			oneIssuetempList.add(SetOneItems(g.TOP3CELLRATE, matrixMap.get("TOP3CELLRATE")));
+			oneIssuetempList.add(SetOneItems(g.TOP3COVERRATE, matrixMap.get("TOP3COVERRATE")));
+			oneIssuetempList.add(SetOneItems(g.TOP3DIRDIFFAOA, matrixMap.get("TOP3DIRDIFFAOA")));
+			oneIssuetempList.add(SetOneItems(g.TOP3DISOVERAVGSITE, matrixMap.get("TOP3DISOVERAVGSITE")));
+			oneIssuetempList.add(SetOneItems(g.CELLLIST, matrixMap.get("CELLLIST")));
+			oneIssuetempList.add(SetOneItems(g.HISMRDEV, matrixMap.get("HISMRDEV")));
+			oneIssuetempList.add(SetOneItems(g.TOP1OVERCOVER, matrixMap.get("TOP1OVERCOVER")));
+			oneIssuetempList.add(SetOneItems(g.TOP1POORCOVER, matrixMap.get("TOP1POORCOVER")));
+			oneIssuetempList.add(SetOneItems(g.TOP1MISSNEI, matrixMap.get("TOP1MISSNEI")));
+			oneIssuetempList.add(SetOneItems(g.TOP1MISSECIMR, matrixMap.get("TOP1MISSECIMR")));
+			oneIssuetempList.add(SetOneItems(g.TOP1MISSECIMRRATE, matrixMap.get("TOP1MISSECIMRRATE")));
+			oneIssuetempList.add(SetOneItems(g.TOPALARMINCELL, matrixMap.get("TOPALARMINCELL")));
+			oneIssuetempList.add(SetOneItems(g.ALARMEFFCOVER, matrixMap.get("ALARMEFFCOVER")));
+			oneIssuetempList.add(SetOneItems(g.OTHERCELLEXIST, matrixMap.get("OTHERCELLEXIST")));
+			oneIssuetempList.add(SetOneItems(g.TRAFFIC, matrixMap.get("TRAFFIC")));
+			oneIssuetempList.add(SetOneItems(g.ESRVCCHORATE, matrixMap.get("ESRVCCHORATE")));
+			oneIssuetempList.add(SetOneItems(g.HISESRVCCHO, matrixMap.get("HISESRVCCHO")));
+			oneIssuetempList.add(SetOneItems(g.SIMUlCOVER, matrixMap.get("SIMUlCOVER")));
+			oneIssuetempList.add(SetOneItems(g.POVERERROR, matrixMap.get("POVERERROR")));
+			oneIssuetempList.add(SetOneItems(g.ADJDIR, matrixMap.get("ADJDIR")));
+			oneIssuetempList.add(SetOneItems(g.ADJANGLE, matrixMap.get("ADJANGLE")));
+			SumarryOneGridResult(result, oneIssuetempList);
+			timevalue += System.currentTimeMillis() - b;
+			issueGridExporter.Export(result);
+		}
+		logger.info("web_issueana_grid Process use " + String.format("%.3f", 1e-3 * timevalue) + " sec");
+		issueGridExporter.finish();
+	}
+
+	private void GridResultProcess() {
+		long timevalue = 0;
+
+		for (GridInfo g : gridMap.values()) {
+			long b = System.currentTimeMillis();
+			GridResult result = new GridResult();
+			result.DATE = g.DATE;
+			result.CITY = g.CITY;
+			result.PROVINCE = g.PROVINCE;
+			result.GRID_ID = g.GRID_ID;
+			result.TOP1ECI = g.TOP1ECI;
+			result.TOP2ECI = g.TOP2ECI;
+			result.TOP3ECI = g.TOP3ECI;
+			result.TOP1CELLRATE = GetCellRate(g.TOP1MRPOORNUM, g.MRPOORNUM, matrixMap.get("TOP1CELLRATE"));
+			result.TOP2CELLRATE = GetCellRate(g.TOP2MRPOORNUM, g.MRPOORNUM, matrixMap.get("TOP2CELLRATE"));
+			result.TOP3CELLRATE = GetCellRate(g.TOP3MRPOORNUM, g.MRPOORNUM, matrixMap.get("TOP3CELLRATE"));
+			result.TOP1COVERRATE = GetCoverRate(mrsrsrpMap.get(g.TOP1ECI), matrixMap.get("TOP1COVERRATE"));
+			result.TOP2COVERRATE = GetCoverRate(mrsrsrpMap.get(g.TOP2ECI), matrixMap.get("TOP2COVERRATE"));
+			result.TOP3COVERRATE = GetCoverRate(mrsrsrpMap.get(g.TOP3ECI), matrixMap.get("TOP3COVERRATE"));
+			result.TOP1DIRDIFFAOA = GetDirDiffAoa(g.TOP1ANGLE, engdataMap.get(g.TOP1ECI),
+					matrixMap.get("TOP1DIRDIFFAOA"));
+			result.TOP1DIRDIFFAOA = GetDirDiffAoa(g.TOP2ANGLE, engdataMap.get(g.TOP2ECI),
+					matrixMap.get("TOP2DIRDIFFAOA"));
+			result.TOP1DIRDIFFAOA = GetDirDiffAoa(g.TOP3ANGLE, engdataMap.get(g.TOP3ECI),
+					matrixMap.get("TOP3DIRDIFFAOA"));
+			result.TOP1DISOVERAVGSITE = GetDisOverAvgSite(g.TOP1DIS, engdataMap.get(g.TOP1ECI),
+					matrixMap.get("TOP1DISOVERAVGSITE"));
+			result.TOP2DISOVERAVGSITE = GetDisOverAvgSite(g.TOP2DIS, engdataMap.get(g.TOP2ECI),
+					matrixMap.get("TOP2DISOVERAVGSITE"));
+			result.TOP3DISOVERAVGSITE = GetDisOverAvgSite(g.TOP3DIS, engdataMap.get(g.TOP3ECI),
+					matrixMap.get("TOP3DISOVERAVGSITE"));
+			result.TOP1OVERCOVER = coverStepMap.get(g.TOP1ECI) == null ? 0 : 1;
+			result.TOP1POORCOVER = 0;
+			result.CELLLIST = 0;
+			result.HISMRDEV = 0;
+			result.TOP1MISSNEI = 0;
+			result.TOP1MISSECIMR = 0;
+			result.TOP1MISSECIMRRATE = 0;
+			result.ALARMEFFCOVER = 0;
+			result.TOPALARMINCELL = GetAlarmIncell(g, alarmCountMap, matrixMap.get("TOPALARMINCELL"));
+			result.ALARMEFFCOVER = 0;
+			result.OTHERCELLEXIST = GetOtherCellExist(g, gridLineMap.get(g.TOP1ECI), alarmCountMap,
+					matrixMap.get("OTHERCELLEXIST"));
+			result.TRAFFIC = GetTaffic(cellMap.get(g.TOP1ECI), matrixMap.get("TRAFFIC"));
+			result.ESRVCCHORATE = GetErvccHoRate(cellMap.get(g.TOP1ECI), matrixMap.get("TRAFFIC"));
+			result.HISESRVCCHO = 0;
+			result.SIMUlCOVER = 0;
+			result.ADJDIR = 0;
+			result.ADJANGLE = 0;
+			result.POVERERROR = 0;
+			gridResultMap.put(result.CITY + "_" + result.GRID_ID, result);
+			timevalue += System.currentTimeMillis() - b;
+			gridResultExporter.Export(result);
+		}
+		logger.info("ana_grid_result Process use " + String.format("%.3f", 1e-3 * timevalue) + " sec");
+		gridResultExporter.finish();
+	}
+
+	// 获取单个GridResult字段的矩阵值组
+	private void SumarryOneGridResult(IssueGridResult result, List<IssueGridResult> oneIssuetempList) {
+		for (IssueGridResult i : oneIssuetempList) {
+			result.ANTENNA += i.ANTENNA;
+			result.ANGLE += i.ANGLE;
+			result.NOBESTCELL += i.NOBESTCELL;
+			result.OVERCOVER += i.OVERCOVER;
+			result.ALARM += i.ALARM;
+			result.MISSNEIGH += i.MISSNEIGH;
+			result.OVERDISTANCE += i.OVERDISTANCE;
+			result.BACKBUILD += i.BACKBUILD;
+		}
+		result.ANTENNA = GetBeliveValue(result.ANTENNA);
+		result.ANGLE = GetBeliveValue(result.ANGLE);
+		result.NOBESTCELL = GetBeliveValue(result.NOBESTCELL);
+		result.OVERCOVER = GetBeliveValue(result.OVERCOVER);
+		result.ALARM = GetBeliveValue(result.ALARM);
+		result.MISSNEIGH = GetBeliveValue(result.MISSNEIGH);
+		result.OVERDISTANCE = GetBeliveValue(result.OVERDISTANCE);
+		result.BACKBUILD = GetBeliveValue(result.BACKBUILD);
+	}
+
+	private int GetBeliveValue(int sumvalue) {
+		if (sumvalue > 6000)
+			return 2;
+		if (sumvalue > 4000)
+			return 1;
+		return 0;
+	}
+
+	// 获取单个GridResult字段的矩阵值组
+	private IssueGridResult SetOneItems(int cv, Matrix mt) {
+		if (mt == null)
+			return new IssueGridResult();
+		IssueGridResult i = new IssueGridResult();
+		i.ANTENNA = cv * mt.ANTENNA;
+		i.ANGLE = cv * mt.ANGLE;
+		i.NOBESTCELL = cv * mt.NOBESTCELL;
+		i.OVERCOVER = cv * mt.OVERCOVER;
+		i.ALARM = cv * mt.ALARM;
+		i.MISSNEIGH = cv * mt.MISSNEIGH;
+		i.OVERDISTANCE = cv * mt.OVERDISTANCE;
+		i.BACKBUILD = cv * mt.BACKBUILD;
+		return i;
+	}
+
+	// private int GetPoverError(CellInfo cell,Matrix matrix) {
+	// if(cell == null || matrix == null) return 0;
+	// return 0;
+	// }
+
+	private int GetErvccHoRate(CellInfo cell, Matrix matrix) {
+		if (cell == null || matrix == null)
+			return 0;
+		if (cell.IRATHO_ATTOUTGERAN == 0)
+			return 0;
+		int value1 = cell.IRATHO_ATTOUTGERAN > 100 ? 1 : 0;
+		int value2 = (float) cell.IRATHO_SUCCOUTGERAN / cell.IRATHO_ATTOUTGERAN > 0.9 ? 1 : 0;
+		return value1 & value2;
+	}
+
+	private int GetOtherCellExist(GridInfo g, GridLineList linelist, Map<Long, AlarmCount> alarmCountMap,
+			Matrix matrix) {
+		if (linelist == null || linelist.TOPECILIST == null || linelist.TOPECILIST.length() == 0 || matrix == null
+				|| alarmCountMap.size() == 0)
+			return 0;
+		boolean flag = true;
+		String ecis[] = linelist.TOPECILIST.split(" ");
+		for (String eci : ecis) {
+			eci = eci.trim();
+			if(eci.length() == 0) continue;
+			long neci = Long.parseLong(eci);
+			if (neci == g.TOP2ECI || neci == g.TOP3ECI || neci == g.TOPECIALLNUMECI) {
+				continue;
+			}
+			if (alarmCountMap.containsKey(neci)) {
+				flag = false;
+				break;
+			}
+		}
+
+		return flag == true ? 1 : 0;
+	}
+
+	private int GetTaffic(CellInfo cell, Matrix matrix) {
+		if (cell == null || matrix == null)
+			return 0;
+		int traffic = cell.PDCP_UpOctDl + cell.PDCP_UpOctUl;
+		return traffic > Float.parseFloat(matrix.THRESHOLD) ? 1 : 0;
+	}
+
+	private int GetAlarmIncell(GridInfo g, Map<Long, AlarmCount> alarmCountMap, Matrix matrix) {
+		if (g == null || matrix == null)
+			return 0;
+		int count = alarmCountMap.containsKey(g.TOP1ECI) == true ? alarmCountMap.get(g.TOP1ECI).ALARMCOUNT : 0;
+		count += alarmCountMap.containsKey(g.TOP2ECI) == true ? alarmCountMap.get(g.TOP2ECI).ALARMCOUNT : 0;
+		count += alarmCountMap.containsKey(g.TOP3ECI) == true ? alarmCountMap.get(g.TOP3ECI).ALARMCOUNT : 0;
+		return count > Float.parseFloat(matrix.THRESHOLD) ? 1 : 0;
+	}
+
+	private int GetCellRate(int TOP1MRPOORNUM, int MRPOORNUM, Matrix matrix) {
+		if (MRPOORNUM == 0 || matrix == null)
+			return 0;
+		return 1f - (float) TOP1MRPOORNUM / MRPOORNUM > Float.parseFloat(matrix.THRESHOLD) ? 1 : 0;
+	}
+
+	private int GetCoverRate(MrsStatRsrp mrsrsrp, Matrix matrix) {
+		if (mrsrsrp == null || mrsrsrp.reportnum == 0 || matrix == null)
+			return 0;
+		float value = (mrsrsrp.mr_rsrp_00 + mrsrsrp.mr_rsrp_00 + mrsrsrp.mr_rsrp_00 + mrsrsrp.mr_rsrp_01
+				+ mrsrsrp.mr_rsrp_02 + mrsrsrp.mr_rsrp_03 + mrsrsrp.mr_rsrp_04 + mrsrsrp.mr_rsrp_05 + mrsrsrp.mr_rsrp_06
+				+ mrsrsrp.mr_rsrp_07 + mrsrsrp.mr_rsrp_08 + mrsrsrp.mr_rsrp_09 + mrsrsrp.mr_rsrp_10 + mrsrsrp.mr_rsrp_11
+				+ mrsrsrp.mr_rsrp_12 + mrsrsrp.mr_rsrp_13 + mrsrsrp.mr_rsrp_14 + mrsrsrp.mr_rsrp_15 + mrsrsrp.mr_rsrp_16
+				+ mrsrsrp.mr_rsrp_17 + mrsrsrp.mr_rsrp_20) / (float) mrsrsrp.reportnum;
+		return 1f - value < Float.parseFloat(matrix.THRESHOLD) ? 1 : 0;
+	}
+
+	private int GetDirDiffAoa(int dir, EngineerData engdata, Matrix matrix) {
+		if (engdata == null || matrix == null)
+			return 0;
+		int value = dir - engdata.dir;
+		// return value >=matrix.THRESHOLD && value <=matrix.THRESHOLD ? 1: 0;
+		return value >= -10 && value <= 10 ? 1 : 0;
+	}
+
+	private int GetDisOverAvgSite(float dis, EngineerData engdata, Matrix matrix) {
+		if (engdata == null || matrix == null)
+			return 0;
+		float value = dis - engdata.site_distance*1000;
+		return value > Float.parseFloat(matrix.THRESHOLD) ? 1 : 0;
+	}
+
+}

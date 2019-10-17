@@ -1,0 +1,55 @@
+package com.tuoming.lteanalysis.GridMatrix.beans;
+
+public class GridResult {
+	public String	DATE;
+	public String	CITY;
+	public long	GRID_ID;
+	public long	TOP1ECI;
+	public long	TOP2ECI;
+	public long	TOP3ECI;
+	public long	TOPECI;
+	public int	TOP1CELLRATE;
+	public int	TOP1COVERRATE;
+	public int	TOP1DIRDIFFAOA;
+	public int	TOP1DISOVERAVGSITE;
+	public int	TOP2CELLRATE;
+	public int	TOP2COVERRATE;
+	public int	TOP2DIRDIFFAOA;
+	public int	TOP2DISOVERAVGSITE;
+	public int	TOP3CELLRATE;
+	public int	TOP3COVERRATE;
+	public int	TOP3DIRDIFFAOA;
+	public int	TOP3DISOVERAVGSITE;
+	public int	CELLLIST;
+	public int	HISMRDEV;
+	public int	TOP1OVERCOVER;
+	public int	TOP1POORCOVER;
+	public int	TOP1MISSNEI;
+	public int	TOP1MISSECIMR;
+	public int	TOP1MISSECIMRRATE;
+	public int	TOPALARMINCELL;
+	public int	ALARMEFFCOVER;
+	public int	OTHERCELLEXIST;
+	public int	TRAFFIC;
+	public int	ESRVCCHORATE;
+	public int	HISESRVCCHO;
+	public int	SIMUlCOVER;
+	public int	POVERERROR;
+	public int	ADJDIR;
+	public int	ADJANGLE;
+	
+	public String PROVINCE;
+	
+	@Override
+	public String toString() {
+		return DATE + "," + CITY + "," + GRID_ID + "," + TOP1ECI + "," + TOP2ECI + "," + TOP3ECI + "," + TOPECI + ","
+				+ TOP1CELLRATE + "," + TOP1COVERRATE + "," + TOP1DIRDIFFAOA + "," + TOP1DISOVERAVGSITE + ","
+				+ TOP2CELLRATE + "," + TOP2COVERRATE + "," + TOP2DIRDIFFAOA + "," + TOP2DISOVERAVGSITE + ","
+				+ TOP3CELLRATE + "," + TOP3COVERRATE + "," + TOP3DIRDIFFAOA + "," + TOP3DISOVERAVGSITE + "," + CELLLIST
+				+ "," + HISMRDEV + "," + TOP1OVERCOVER + "," + TOP1POORCOVER + "," + TOP1MISSNEI + "," + TOP1MISSECIMR
+				+ "," + TOP1MISSECIMRRATE + "," + TOPALARMINCELL + "," + ALARMEFFCOVER + "," + OTHERCELLEXIST + ","
+				+ TRAFFIC + "," + ESRVCCHORATE + "," + HISESRVCCHO + "," + SIMUlCOVER + "," + POVERERROR + "," + ADJDIR
+				+ "," + ADJANGLE;
+	}
+	
+}

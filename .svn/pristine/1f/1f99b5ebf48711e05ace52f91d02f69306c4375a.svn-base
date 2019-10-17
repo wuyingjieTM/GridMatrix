@@ -1,0 +1,11 @@
+package com.tuoming.lteanalysis.GridMatrix.beans;
+
+public class AlarmList {
+	public String	DATE;
+	public String	PROVINCE;
+	public String	CITY;
+	public long	ECI;
+	public String	ALARMNAME;
+	public String	INSERT_TIME;
+	public String	CLRINSERT_TIME;
+}

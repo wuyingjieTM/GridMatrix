@@ -1,0 +1,15 @@
+package com.tuoming.lteanalysis.GridMatrix.beans;
+
+public class GridIssueanaAntenna {
+	public String DATE;
+	public String CITY;
+	public long GRID_ID;
+	public long ECI;
+	public String CELL_NAME;
+	public String ANTENNA;
+	@Override
+	public String toString() {
+		return DATE + "," + CITY + "," + GRID_ID + "," + ECI + "," + CELL_NAME + "," + ANTENNA;
+	}
+
+}

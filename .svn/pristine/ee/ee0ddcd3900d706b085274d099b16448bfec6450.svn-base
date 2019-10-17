@@ -1,0 +1,16 @@
+package com.tuoming.lteanalysis.GridMatrix.beans;
+
+/**
+ * 
+* @ClassName: MissNeighbor 
+* @Description: TODO 邻区漏配信息
+* @author kouxuejin 
+* @date 2018年11月6日 下午4:49:00 
+*
+ */
+public class MissNeighbor {
+	public long S_CELL_ID;
+	public String S_CELL_NAME;
+	public long D_CELL_ID;
+	public String D_CELL_NAME;
+}

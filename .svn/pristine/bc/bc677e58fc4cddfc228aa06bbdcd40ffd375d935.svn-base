@@ -1,0 +1,14 @@
+package com.tuoming.lteanalysis.GridMatrix.output;
+
+import com.tuoming.lteanalysis.GridMatrix.beans.GridResult;
+
+public class GridResultFileExporter extends FileExporter {
+	public GridResultFileExporter(String date) {
+		super.filename = "ana_grid_result_" + date + ".csv"; 
+	}
+	
+	protected String format(Object data) {
+		GridResult r = (GridResult)data;
+		return r.toString() + "\n";
+	}
+}
