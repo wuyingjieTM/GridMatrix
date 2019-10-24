@@ -6,7 +6,7 @@ public class EngineerData {
 	public String	region;//汇总导出
 	//public String	town;
 	//public String	grid;
-	//public String	def_vendor;
+	public String	def_vendor;
 	//public String	omc;
 	//public int	def_cellid;
 	//public int	def_enbid;

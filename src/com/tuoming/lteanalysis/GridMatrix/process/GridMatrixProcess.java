@@ -1094,7 +1094,16 @@ public class GridMatrixProcess {
 		}
 			break;
 		case NOBESTCELL: {
-			conclusion += "";
+			for (Entry<String, Object> d : cellInfos.entrySet()) {
+				GridIssueanaBackbuild gib = (GridIssueanaBackbuild) d.getValue();
+				if (dimensionflag == SCENE_FLAG) {
+					sceneBackbuildExporter.Export(gib.sceneToString());
+				}
+				if (dimensionflag == CITY_FLAG) {
+					cityBackbuildExporter.Export(gib);
+				}
+			}
+  			conclusion += "将现网小区数据与设置规则数据相对比，本场景共有"+gridNum+"个弱覆盖栅格周边共有" + cellInfos.size() + "个小区参数需要调整。";
 		}
 			break;
 		}
@@ -1255,12 +1264,12 @@ public class GridMatrixProcess {
 			gridTaskExporter.Export(gt);
 		}
 
-			// 场景级汇总
-			SetDimensionOverdistance(
-					g.DATE + SPLITER + g.PROVINCE + SPLITER + g.CITY + SPLITER + g.SCENE_MAJOR + SPLITER + g.SCENE_MINOR,
-					gio, SCENE_FLAG);
-			// 地市级汇总
-			SetDimensionOverdistance(g.DATE + SPLITER + g.PROVINCE + SPLITER + g.CITY, gio, CITY_FLAG);
+		// 场景级汇总
+		SetDimensionOverdistance(
+				g.DATE + SPLITER + g.PROVINCE + SPLITER + g.CITY + SPLITER + g.SCENE_MAJOR + SPLITER + g.SCENE_MINOR,
+				gio, SCENE_FLAG);
+		// 地市级汇总
+		SetDimensionOverdistance(g.DATE + SPLITER + g.PROVINCE + SPLITER + g.CITY, gio, CITY_FLAG);
 
 		// 栅格场景汇总
 		SetDimensionGrid(
@@ -1470,7 +1479,7 @@ public class GridMatrixProcess {
 				if("D".equals(ed.band.trim()) || "E".equals(ed.band.trim()) || "F".equals(ed.band.trim())){
 					plan_value = rsPower + 3 > 12 ? 12 : rsPower + 3;
 					cell_type = "TDD";
-					if("D".equals(ed.band))
+					if("D".equals(ed.band.trim()))
 						flag = true;
 				}else{
 					plan_value = rsPower + 3 > 15 ? 15 : rsPower + 3;
@@ -1491,13 +1500,14 @@ public class GridMatrixProcess {
 					gin.GRID_ID = g.GRID_ID;
 					gin.CELL_NAME = ed.def_cellname_chinese;
 					gin.NOBESTCELL = "将现网小区数据与设置规则数据相对比，发现小区"+ed.def_cellname_chinese+"为"+cell_type+"小区，其小区功率为"+ci.ReferenceSignalPower
-							+"，该小区仍然有功率提升空间，建议将小区功率提升至"+plan_value + "。";
+							+"，该小区仍然有功率提升空间，建议将小区功率提升至"+plan_value;
 					
 					if(flag){
 						for(Entry<Long, EngineerData> et : engdataMap.entrySet()){
 							EngineerData ed1 = et.getValue();
 							if(Math.abs(ed.latitude - ed1.latitude) < 0.015f
-									&& Math.abs(ed.longitude - ed1.longitude) < 0.015f ){
+									&& Math.abs(ed.longitude - ed1.longitude) < 0.015f 
+									&& !"D".equals(ed1.band.trim()) && !"E".equals(ed1.band.trim()) ){
 								float dis = getInstance(Double.valueOf(String.valueOf(ed.longitude)),Double.valueOf(String.valueOf(ed.latitude))
 										,Double.valueOf(String.valueOf(ed1.longitude)),Double.valueOf(String.valueOf(ed1.latitude)));
 								
@@ -1596,41 +1606,55 @@ public class GridMatrixProcess {
 		angle = angle > 180 ? angle - 360 : angle;
 		if (angle * mac.avgaoa < 0)
 			return c;
-		boolean changeflag = false;
-		float minAngle = 0;
-		String opposite = "";
-		float min = Math.min(angle, mac.avgaoa);
-		float max = Math.max(angle, mac.avgaoa);
-		if (angle > 0 && mac.avgaoa > 0 && min > 10 && Math.abs(angle-mac.avgaoa)<=60) {
-			changeflag = true;
-//			minAngle = min + ed.dir < 360 ? min + ed.dir : min + ed.dir - 360;
-			minAngle = min ;
-			opposite = "顺时针";
-		}
-		if (angle < 0 && mac.avgaoa < 0 && max < -10 && Math.abs(angle-mac.avgaoa)<=60) {
-			changeflag = true;
-//			minAngle = max + ed.dir > 0 ? max + ed.dir : max + ed.dir + 360;
-			minAngle = max ;
-			opposite = "逆时针";
-		}
-		if (changeflag == false)
-			return c;
-		
 		float newaoa = mac.avgaoa;
-//		float newaoa = 0;
-//		if (ed.dir + mac.avgaoa >= 360) {
-//			newaoa = ed.dir + mac.avgaoa - 360;
-//		} else if (ed.dir + mac.avgaoa < 0) {
-//			newaoa = ed.dir + mac.avgaoa + 360;
-//		} else {
-//			newaoa = ed.dir + mac.avgaoa;
-//		}
+		float minAngle = 0;
+		//2019-10-17
+		if(angle > 90 || angle < -90){
+			if(ed.def_vendor.equals("诺西") || ed.def_vendor.equals("爱立信")){
+				c = "经AOA计算，小区"+ed.def_cellname_chinese+"天线到达角（相对实际角度）为"+newaoa+"度。该小区原工参天线方向角"+ ed.dir
+							+"度，AOA（-30度，+30度）采样点占比为"+mac.aoa[0] * 100+"% ，小于70% 。小区方向角与连线弱覆盖栅格夹角"+angle+"度。根据分析结果，怀疑小区天线接反，建议现场核查。";
+				minAngle = 180;
+			}else if(( mac.avgaoa > 90) || ( mac.avgaoa < -90)){
+				c = "经AOA计算，小区"+ed.def_cellname_chinese+"天线到达角（相对实际角度）为"+newaoa+"度。该小区原工参天线方向角"+ ed.dir
+						+"度，AOA（-30度，+30度）采样点占比为"+mac.aoa[0] * 100+"% ，小于70% 。小区方向角与连线弱覆盖栅格夹角"+angle+"度。根据分析结果，怀疑小区天线接反，建议现场核查。";
+				minAngle = 180;
+			}
+		}else{
 		
-
-		c = "TOP" + flag + "天线方向角结论：@" + "经AOA计算，小区 " + ed.def_cellname_chinese + " 天线到达角为(相对实际角度)"
-				+ (int) (newaoa) + "度。" + "该小区原工参天线方向角" + ed.dir + "度，" + "AOA（-30度，+30度）采样点占比为"
-				+ mac.aoa[0] * 100 + "% ，小于70%，" + "根据分析结果，建议该小区天线方位角在实际角度上" + opposite + "调整" + Math.abs((int) minAngle)+ "度。";
-
+			boolean changeflag = false;
+			
+			String opposite = "";
+			float min = Math.min(angle, mac.avgaoa);
+			float max = Math.max(angle, mac.avgaoa);
+			if (angle > 0 && mac.avgaoa > 0 && min > 10 && Math.abs(angle-mac.avgaoa)<=60) {
+				changeflag = true;
+	//			minAngle = min + ed.dir < 360 ? min + ed.dir : min + ed.dir - 360;
+				minAngle = min ;
+				opposite = "顺时针";
+			}
+			if (angle < 0 && mac.avgaoa < 0 && max < -10 && Math.abs(angle-mac.avgaoa)<=60) {
+				changeflag = true;
+	//			minAngle = max + ed.dir > 0 ? max + ed.dir : max + ed.dir + 360;
+				minAngle = max ;
+				opposite = "逆时针";
+			}
+			
+			if (changeflag == false)
+				return c;
+			
+	//		float newaoa = 0;
+	//		if (ed.dir + mac.avgaoa >= 360) {
+	//			newaoa = ed.dir + mac.avgaoa - 360;
+	//		} else if (ed.dir + mac.avgaoa < 0) {
+	//			newaoa = ed.dir + mac.avgaoa + 360;
+	//		} else {
+	//			newaoa = ed.dir + mac.avgaoa;
+	//		}
+	
+			c = "TOP" + flag + "天线方向角结论：@" + "经AOA计算，小区 " + ed.def_cellname_chinese + " 天线到达角为(相对实际角度)"
+					+ (int) (newaoa) + "度。" + "该小区原工参天线方向角" + ed.dir + "度，" + "AOA（-30度，+30度）采样点占比为"
+					+ mac.aoa[0] * 100 + "% ，小于70%，" + "根据分析结果，建议该小区天线方位角在实际角度上" + opposite + "调整" + Math.abs((int) minAngle)+ "度。";
+		}
 		// 栅格aoa详情详情输出
 		// 组织输出字段
 		GridIssueanaAngle gia = new GridIssueanaAngle();
@@ -2262,15 +2286,20 @@ public class GridMatrixProcess {
 				cityGridsCountMap.put(dimension, issueGridMap);
 			}
 		}
-		HashMap<String, Long> dimensionMap = issueGridMap.get(dimensionFlag);
-		if (dimensionMap == null) {
-			dimensionMap = new HashMap<String, Long>();
-			issueGridMap.put(dimensionFlag, dimensionMap);
-		}
-		Long l = dimensionMap.get(key);
-		if (l == null) {
-			l = new Long(1);
-			dimensionMap.put(key, l);
+		try{
+			HashMap<String, Long> dimensionMap = issueGridMap.get(dimensionFlag);
+		
+			if (dimensionMap == null) {
+				dimensionMap = new HashMap<String, Long>();
+				issueGridMap.put(dimensionFlag, dimensionMap);
+			}
+			Long l = dimensionMap.get(key);
+			if (l == null) {
+				l = new Long(1);
+				dimensionMap.put(key, l);
+			}
+		}catch(Exception e){
+			logger.info("error is "+e);
 		}
 	}
 
