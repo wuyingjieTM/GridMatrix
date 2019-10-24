@@ -1255,12 +1255,12 @@ public class GridMatrixProcess {
 			gridTaskExporter.Export(gt);
 		}
 
-		// 场景级汇总
-		SetDimensionOverdistance(
-				g.DATE + SPLITER + g.PROVINCE + SPLITER + g.CITY + SPLITER + g.SCENE_MAJOR + SPLITER + g.SCENE_MINOR,
-				gio, SCENE_FLAG);
-		// 地市级汇总
-		SetDimensionOverdistance(g.DATE + SPLITER + g.PROVINCE + SPLITER + g.CITY, gio, CITY_FLAG);
+			// 场景级汇总
+			SetDimensionOverdistance(
+					g.DATE + SPLITER + g.PROVINCE + SPLITER + g.CITY + SPLITER + g.SCENE_MAJOR + SPLITER + g.SCENE_MINOR,
+					gio, SCENE_FLAG);
+			// 地市级汇总
+			SetDimensionOverdistance(g.DATE + SPLITER + g.PROVINCE + SPLITER + g.CITY, gio, CITY_FLAG);
 
 		// 栅格场景汇总
 		SetDimensionGrid(
@@ -1470,7 +1470,7 @@ public class GridMatrixProcess {
 				if("D".equals(ed.band.trim()) || "E".equals(ed.band.trim()) || "F".equals(ed.band.trim())){
 					plan_value = rsPower + 3 > 12 ? 12 : rsPower + 3;
 					cell_type = "TDD";
-					if("D".equals(ed.band.trim()))
+					if("D".equals(ed.band))
 						flag = true;
 				}else{
 					plan_value = rsPower + 3 > 15 ? 15 : rsPower + 3;
@@ -1491,14 +1491,13 @@ public class GridMatrixProcess {
 					gin.GRID_ID = g.GRID_ID;
 					gin.CELL_NAME = ed.def_cellname_chinese;
 					gin.NOBESTCELL = "将现网小区数据与设置规则数据相对比，发现小区"+ed.def_cellname_chinese+"为"+cell_type+"小区，其小区功率为"+ci.ReferenceSignalPower
-							+"，该小区仍然有功率提升空间，建议将小区功率提升至"+plan_value;
+							+"，该小区仍然有功率提升空间，建议将小区功率提升至"+plan_value + "。";
 					
 					if(flag){
 						for(Entry<Long, EngineerData> et : engdataMap.entrySet()){
 							EngineerData ed1 = et.getValue();
 							if(Math.abs(ed.latitude - ed1.latitude) < 0.015f
-									&& Math.abs(ed.longitude - ed1.longitude) < 0.015f 
-									&& !"D".equals(ed1.band.trim()) && !"E".equals(ed1.band.trim()) ){
+									&& Math.abs(ed.longitude - ed1.longitude) < 0.015f ){
 								float dis = getInstance(Double.valueOf(String.valueOf(ed.longitude)),Double.valueOf(String.valueOf(ed.latitude))
 										,Double.valueOf(String.valueOf(ed1.longitude)),Double.valueOf(String.valueOf(ed1.latitude)));
 								
@@ -1508,7 +1507,7 @@ public class GridMatrixProcess {
 								
 							}
 						}
-						gin.NOBESTCELL += "\r\n该栅格TOP小区" +ed.def_cellname_chinese + "为D频段小区，其100米范围内存在低频段小区" + lowCell + "，建议用" + lowCell + "小区吸收话务。";
+						gin.NOBESTCELL += "#该栅格TOP小区" +ed.def_cellname_chinese + "为D频段小区，其100米范围内存在低频段小区" + lowCell + "，建议用" + lowCell + "小区吸收话务。";
 					}	
 					
 					list.add(gin);
@@ -1517,7 +1516,8 @@ public class GridMatrixProcess {
 		}
 
 		if (cellnames.length() > 0) {
-			c = "将现网小区数据与设置规则数据相对比,";
+//			c = "将现网小区数据与设置规则数据相对比，";
+			c = "";
 			for (GridIssueanaNobestcell gin : list) {
 				gridNoBestCellExporter.Export(gin);
 				// 场景级汇总
@@ -1527,9 +1527,11 @@ public class GridMatrixProcess {
 				SetDimensionNoBestCell(g.DATE + SPLITER + g.PROVINCE + SPLITER + g.CITY, gin, CITY_FLAG);
 			
 				if(gin.param_name.equals("ReferenceSignalPower")){
-					c += "发现小区"+gin.CELL_NAME+"为"+gin.cell_type+"小区，其小区功率为"+gin.real_value+"，该小区仍然有功率提升空间，建议将小区功率提升至"+gin.plan_value;
+//					c += "发现小区"+gin.CELL_NAME+"为"+gin.cell_type+"小区，其小区功率为"+gin.real_value+"，该小区仍然有功率提升空间，建议将小区功率提升至"+gin.plan_value;
+					c += gin.NOBESTCELL;
 				}else{
-					c += "发现小区"+gin.CELL_NAME+"的"+gin.param_name+"参数配置不合理，原始设置值为"+gin.real_value+"，建议设置值"+gin.plan_value;
+//					c += "发现小区"+gin.CELL_NAME+"的"+gin.param_name+"参数配置不合理，原始设置值为"+gin.real_value+"，建议设置值"+gin.plan_value;
+					c += gin.NOBESTCELL;
 				}
 			}
 			
@@ -2260,20 +2262,15 @@ public class GridMatrixProcess {
 				cityGridsCountMap.put(dimension, issueGridMap);
 			}
 		}
-		try{
-			HashMap<String, Long> dimensionMap = issueGridMap.get(dimensionFlag);
-		
-			if (dimensionMap == null) {
-				dimensionMap = new HashMap<String, Long>();
-				issueGridMap.put(dimensionFlag, dimensionMap);
-			}
-			Long l = dimensionMap.get(key);
-			if (l == null) {
-				l = new Long(1);
-				dimensionMap.put(key, l);
-			}
-		}catch(Exception e){
-			logger.info("error is "+e);
+		HashMap<String, Long> dimensionMap = issueGridMap.get(dimensionFlag);
+		if (dimensionMap == null) {
+			dimensionMap = new HashMap<String, Long>();
+			issueGridMap.put(dimensionFlag, dimensionMap);
+		}
+		Long l = dimensionMap.get(key);
+		if (l == null) {
+			l = new Long(1);
+			dimensionMap.put(key, l);
 		}
 	}
 
